@@ -62,8 +62,10 @@ class OAuthWebapp
         if (req.session.isKeySet("oauth.client"))
         {
             string hash = req.session.get!string("oauth.client");
-            auto settings = _settingsMap[hash].get;
-
+            import std.stdio;
+            writeln("hash", hash);
+            writeln("settings", _settingsMap);
+            if (auto settings = hash in _settingsMap)
             if (auto session =
                 settings ? settings.loadSession(req.session) : null)
             {
@@ -101,7 +103,7 @@ class OAuthWebapp
             scopes = (Optional) An array of identifiers specifying the scope of
                 the authorization requested.
       +/
-    void login(
+    bool login(
         scope HTTPServerRequest req,
         scope HTTPServerResponse res,
         immutable OAuthSettings settings,
@@ -126,6 +128,7 @@ class OAuthWebapp
                 // For assert in oauthSession method
                 version(assert) req.params["oauth.debug.login.checked"] = "yes";
             }
+            return true;
         }
         else
         {
@@ -133,6 +136,7 @@ class OAuthWebapp
                 req.session = res.startSession();
 
             res.redirect(settings.userAuthUri(req.session, scopes));
+            return false;
         }
     }
 
