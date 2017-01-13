@@ -848,7 +848,9 @@ class OAuthProvider
 
     protected:
 
-    void authUriHandler(immutable OAuthSettings, string[string]) const { }
+    void authUriHandler(immutable OAuthSettings settings, string[string] params) const {
+        params["redirect_uri"] = settings.redirectUri;
+    }
 
     void tokenRequestor(
         in OAuthSettings settings,
