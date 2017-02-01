@@ -7,7 +7,8 @@
   +/
 module oauth.provider.facebook;
 
-import oauth.client;
+import oauth.provider : OAuthProvider, OAuthProviders;
+import oauth.settings : OAuthSettings;
 
 import vibe.data.json;
 import vibe.http.client;
@@ -73,7 +74,7 @@ class FacebookAuthProvider : OAuthProvider
 {
     shared static this()
     {
-        OAuthProvider.register("facebook", new immutable(FacebookAuthProvider));
+        OAuthProviders.register("facebook", new immutable(FacebookAuthProvider));
     }
 
     private this() immutable

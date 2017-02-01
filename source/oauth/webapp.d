@@ -7,8 +7,9 @@
   +/
 module oauth.webapp;
 
-import oauth.client;
-import vibe.http.server;
+import oauth.settings : OAuthSettings;
+import oauth.session : OAuthSession;
+import vibe.http.server : HTTPServerRequest, HTTPServerResponse;
 
 import std.datetime : Clock, SysTime;
 import std.typecons : Rebindable;
@@ -42,6 +43,8 @@ class OAuthWebapp
     bool isLoggedIn(
         scope HTTPServerRequest req)
     {
+        import std.stdio;
+        writeln("isLoggedIn()");
         // For assert in oauthSession method
         version(assert) req.params["oauth.debug.login.checked"] = "yes";
 
@@ -62,13 +65,14 @@ class OAuthWebapp
         if (req.session.isKeySet("oauth.client"))
         {
             string hash = req.session.get!string("oauth.client");
-            import std.stdio;
             writeln("hash", hash);
-            writeln("settings", _settingsMap);
+            writeln("settingsMap", _settingsMap);
+            writeln("settings", hash in _settingsMap);
             if (auto settings = hash in _settingsMap)
             if (auto session =
                 settings ? settings.loadSession(req.session) : null)
             {
+                writeln("settings", settings);
                 static if (__traits(compiles, req.context))
                     req.context["oauth.session"] = session;
 
@@ -100,15 +104,24 @@ class OAuthWebapp
             res = Response object to be used to redirect the client to the
                 authentication server
             settings = The OAuth settings that apply to this _login attempt
-            scopes = (Optional) An array of identifiers specifying the scope of
-                the authorization requested.
+            extraParams = Extra parameters to include in the authentication
+                uri. Use this to pass provider specific parameters that cannot
+                be included in the settings because they won't be the same for
+                every authorization request. (optional)
+            scopes = An array of identifiers specifying the scope of
+                the authorization requested. (optional)
       +/
     bool login(
         scope HTTPServerRequest req,
         scope HTTPServerResponse res,
         immutable OAuthSettings settings,
-        string[] scopes = null)
+        in string[string] extraParams = null,
+        in string[] scopes = null)
     {
+        import std.stdio;
+        writeln("login()");
+
+        // redirect from the authentication server
         if (req.session && "code" in req.query && "state" in req.query)
         {
             import std.digest.digest : toHexString;
@@ -135,7 +148,8 @@ class OAuthWebapp
             if (!req.session)
                 req.session = res.startSession();
 
-            res.redirect(settings.userAuthUri(req.session, scopes));
+            writeln("redirecting to OAuth provider");
+            res.redirect(settings.userAuthUri(req.session, extraParams, scopes));
             return false;
         }
     }

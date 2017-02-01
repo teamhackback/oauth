@@ -7,7 +7,8 @@
   +/
 module oauth.provider.google;
 
-import oauth.client;
+import oauth.provider : OAuthProvider, OAuthProviders;
+import oauth.settings : OAuthSettings;
 
 import vibe.core.file;
 import vibe.data.json;
@@ -16,7 +17,7 @@ import std.exception : enforce;
 
 shared static this()
 {
-    OAuthProvider.register("google", new immutable(OAuthProvider)(
+    OAuthProviders.register("google", new immutable(OAuthProvider)(
         "https://accounts.google.com/o/oauth2/auth",
         "https://accounts.google.com/o/oauth2/token"
     ));
@@ -30,7 +31,7 @@ auto loadGoogleAuthSettings(
     string clientType = "web",
     string path = "./client_secrets.json")
 {
-    auto provider = OAuthProvider.forName("google");
+    auto provider = OAuthProviders.forName("google");
     auto clientSecretsJson = path.readFileUTF8.parseJsonString();
 
     auto settingsJson = clientSecretsJson[clientType];

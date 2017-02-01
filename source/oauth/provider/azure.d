@@ -8,7 +8,8 @@
 
 module oauth.provider.azure;
 
-import oauth.client;
+import oauth.provider : OAuthProvider, OAuthProviders;
+import oauth.settings : OAuthSettings;
 
 import vibe.data.json;
 import vibe.http.client;
@@ -30,7 +31,7 @@ void registerAzureAuthProvider(
     string tenantId = "common",
     string name = "azure")
 {
-    OAuthProvider.register(name, new immutable(AzureAuthProvider)(tenantId));
+    OAuthProviders.register(name, new immutable(AzureAuthProvider)(tenantId));
 }
 
 /++
