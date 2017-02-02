@@ -14,6 +14,8 @@ import std.datetime : Clock, DateTimeException, hours, parseRFC822DateTime, SysT
 import std.exception : enforce;
 import std.format : format;
 
+version(DebugOAuth) import std.experimental.logger;
+
 immutable(OAuthSettings)[] loadConfig(string path)
 {
     import vibe.core.file;
@@ -125,6 +127,7 @@ class OAuthSettings
         this.redirectUri = redirectUri;
 
         import std.digest.sha : sha256Of;
+        assert(this.provider !is null, "Invalid provider selected");
         this.hash = sha256Of(provider.tokenUri ~ ' ' ~ clientId);
     }
 
@@ -165,23 +168,25 @@ class OAuthSettings
         import std.digest.digest : toHexString;
         import vibe.inet.webform : formEncode;
 
+        version(DebugOAuth) log("userAuthUri(): redirecting user to auth page");
+
         string[string] reqParams;
-        string scopesJoined = join(scopes, ' ');
 
         foreach (k, v; extraParams)
             reqParams[k] = v;
 
+        // the oAuth server returns a code with which a token can be requested
         reqParams["response_type"] = "code";
         reqParams["client_id"] = clientId;
 
+        string scopesJoined = join(scopes, ' ');
         if (scopesJoined)
             reqParams["scope"] = scopesJoined;
 
-        auto t = Clock.currTime;
-        auto rnd = uniform!ulong;
-
         provider.authUriHandler(this, reqParams);
 
+        auto t = Clock.currTime;
+        auto rnd = uniform!ulong;
         auto key = loginKey(t, rnd, scopesJoined);
         reqParams["state"] = Base64URLNoPadding.encode(key);
 
@@ -189,6 +194,7 @@ class OAuthSettings
             cast(bool) ("redirect_uri" in reqParams)));
         httpSession.set("oauth.client", toHexString(this.hash));
 
+        // generate redirect URI
         URL uri = provider.authUriParsed;
         Appender!string app;
         if (uri.queryString.length)
@@ -238,6 +244,7 @@ class OAuthSettings
     }
     body
     {
+        version(DebugOAuth) log("userSession(): exchanging received code -> token");
         enforce(httpSession.isKeySet("oauth.authorization"),
             "No call to userAuthUri was made using this HTTP session.");
 
@@ -247,7 +254,7 @@ class OAuthSettings
         enforce(key == loginKey(ld.timestamp, ld.randomId, ld.scopes),
             "Invalid state parameter.");
 
-        // Seems like there is no way to remove a key from a session????
+        // TODO: Seems like there is no way to remove a key from a session????
         //scope(exit)
             //httpSession.set("oauth.authorization", LoginData.init);
 
@@ -312,8 +319,6 @@ class OAuthSettings
             params["scope"] = join(scopes, ' ');
 
         auto session = provider._sessionFactory(this);
-        import std.stdio;
-        writeln("Sending authorization request");
         requestAuthorization(session, params);
         return session;
     }
@@ -350,16 +355,8 @@ class OAuthSettings
 
     OAuthSession loadSession(scope Session httpSession) immutable
     {
-        if (!httpSession.isKeySet("oauth.session"))
-            return null;
-
-        auto data = httpSession.get!(OAuthSession.SaveData)("oauth.session");
         auto session = provider._sessionFactory(this);
-        session.handleAccessTokenResponse(data.tokenData, data.timestamp, true);
-
-        enforce!OAuthException(session.signature == data.signature,
-            "Failed to load session: signature mismatch.");
-
+        OAuthSession.loadSession(httpSession, session);
         return session;
     }
 
@@ -409,8 +406,7 @@ class OAuthSettings
             return type[0 .. ((idx >= 0) ? idx : $)].strip();
         }
 
-        import std.stdio;
-        writeln("Exchanging code with token:", provider.tokenUri);
+        version(OAuthDebug) logf("Exchanging code with token: %s", provider.tokenUri);
 
         import vibe.http.client : requestHTTP;
 
@@ -436,7 +432,7 @@ class OAuthSettings
 
                 Json atr = res.readJson;
 
-                writeln("Exchange successfull", atr);
+                version(OAuthDebug) logf("Exchange successful: %s", atr);
 
                 // Authorization servers MAY omit the scope field in the
                 // access token response if it would be equal to the scope

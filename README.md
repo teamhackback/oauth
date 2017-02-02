@@ -29,3 +29,53 @@ If the access token  has expired, it will automatically be refreshed, if a
 refresh token is available.
 
 [RFC6749]: https://tools.ietf.org/html/rfc6749
+
+## Session
+
+oauth.authorization: LoginData(timestamp, rndLong, scopesJoined, redirectUriInReqParams)
+
+oauth.session: SaveData(timestamp, jsonTokenData, signature)    -- signature = (settings.hash + tokenData).toHash
+
+// TODO: not needed?
+oauth.client (this.hash.toHexString)
+
+# Request to AuthUri
+
+settings.userAuthUri()
+
+reqParams
+	state: LoginKey(timestamp, rndLong, scopesJoined).toHash
+	scope: scopesJoined
+	response_code: code
+	client_id: clientId
+	[extraParams]
+
+# Request to TokenUri
+
+settings.userSession(state: req.query.state, code: req.query.code)
+
+settings.requestAuthorization -> tokenUri
+
+session.handleAccessTokenResponse (saves token (json) and timestamp)
+
+
+# LoadSession
+
+oauth.session -> session.handleAccessTokenResponse
+
+
+# Architecture
+
+OAuthWebApp: convenience interface
+ - settingsMap: OAuthSettings[string]   - settings.hash
+ - sessionCache: SessionCacheEntry(OAuthSession, SysTime)[string]  - req.session.id
+
+OAuthSession: Access token & (optionally) refresh token
+	- timestamp
+	- tokenData
+	- signature
+	- OAuthSettings
+		- OAuthProvider
+		- clientId
+		- clientSecret
+		- redirectUri

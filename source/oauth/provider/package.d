@@ -7,6 +7,28 @@ import vibe.http.client : HTTPClientRequest;
 import oauth.session : OAuthSession;
 import oauth.settings : OAuthSettings;
 
+version(DebugOAuth) import std.experimental.logger;
+
+auto loadFromEnvironment(
+    string providerName,
+    string envPrefix,
+    string redirectUri,
+)
+{
+    import std.process : environment;
+    string clientId = environment[envPrefix ~ "_CLIENTID"];
+    string clientSecret = environment[envPrefix ~ "_CLIENTSECRET"];
+
+    return new immutable(OAuthSettings)(
+        providerName,
+        clientId,
+        clientSecret,
+        redirectUri);
+}
+
+/++
+All registered OAuth 2.0 Providers
++/
 class OAuthProviders
 {
     private
@@ -50,7 +72,7 @@ class OAuthProviders
     {
         // TODO: investigate why 'synchronized' is not nothrow
         //  Hacked around it for now.
-        try synchronized(OAuthProvider.classinfo)
+        try synchronized(OAuthProviders.classinfo)
             if (auto p_srv = name in _servers)
                 return p_srv.get;
         catch (Exception)
@@ -70,7 +92,7 @@ class OAuthProviders
     {
         // TODO: investigate why 'synchronized' is not nothrow
         //  Hacked around it for now.
-        try synchronized(OAuthProvider.classinfo)
+        try synchronized(OAuthProviders.classinfo)
             _servers[name] = srv;
         catch (Exception)
             assert (false);
@@ -78,8 +100,8 @@ class OAuthProviders
 }
 
 /++
-    Represents an OAuth 2.0 authentication server.
-  +/
+Represents an OAuth 2.0 authentication server.
++/
 class OAuthProvider
 {
     package(oauth)
@@ -91,8 +113,9 @@ class OAuthProvider
     alias OAuthSession function(
         immutable OAuthSettings) nothrow SessionFactory; ///
 
-    string authUri;     ///
-    string tokenUri;    ///
+    // TODO: add get/set
+    string authUri;     /// URI to which the user should be redirected
+    string tokenUri;    /// URI from which the token should be requested
 
     /++
         Constructor
@@ -117,11 +140,17 @@ class OAuthProvider
     }
 
     // TODO: was protected
+    /++
+    Customize the redirect to the OAuth Server.
+    +/
     void authUriHandler(immutable OAuthSettings settings, string[string] params) const {
         params["redirect_uri"] = settings.redirectUri;
     }
 
     // TODO: was protected
+    /++
+    Authenticate the token request call to the OAuth Provider.
+    +/
     void tokenRequestor(
         in OAuthSettings settings,
         string[string] params,

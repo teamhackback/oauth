@@ -15,6 +15,8 @@ import vibe.data.json : Json;
 import vibe.http.client : HTTPClientRequest;
 import vibe.http.session : Session;
 
+version(DebugOAuth) import std.experimental.logger;
+
 /++
     Holds an access token and optionally a refresh token.
   +/
@@ -26,7 +28,8 @@ class OAuthSession
     {
         SysTime _timestamp;
         Json _tokenData;
-        string _signature;
+        // TODO: for testing
+        public string _signature;
     }
 
     /++
@@ -78,9 +81,6 @@ class OAuthSession
         enforce!OAuthException(token, "No access token available.");
         req.headers["Authorization"] = "Bearer " ~ this.token;
     }
-
-    deprecated("Use authorizeRequest instead of setAuthorizationHeader.")
-    alias authorizeRequest setAuthorizationHeader;
 
     /++
         Refresh the access token of this session.
@@ -223,7 +223,6 @@ class OAuthSession
             timestamp = Clock.currTime;
         }
 
-        _signature = null;
         _tokenData = atr;
         _timestamp = timestamp;
 
@@ -232,6 +231,7 @@ class OAuthSession
 
         enforce!OAuthException(this.token, "No token received.");
 
+        // generate new _signature
         this.sign();
     }
 
@@ -292,7 +292,9 @@ class OAuthSession
             settings.hash ~ cast(ubyte[])((&_timestamp)[0 .. 1]) ~
             cast(ubyte[]) (this.classinfo.name ~ ": " ~ _tokenData.toString());
 
-        _signature = sha256Of(base).toHexString;
+        // TODO: for some reason the allocated string is GC collected and points
+        // to garbage (hence the need for .dup)
+        _signature = base.sha256Of.toHexString.dup;
     }
 
     string refreshToken() @property const
@@ -314,9 +316,28 @@ class OAuthSession
 
     package void save(scope Session httpSession) const
     {
+        version(OAuthDebug) log("OAuthSession: serialize");
         httpSession.set("oauth.session",
             SaveData(_timestamp, _tokenData, this.signature));
     }
+
+    package static OAuthSession loadSession(scope Session httpSession, OAuthSession session)
+    {
+        if (!httpSession.isKeySet("oauth.session"))
+            return null;
+
+        version(OAuthDebug) log("OAuthSession: deserialize");
+        auto data = httpSession.get!(OAuthSession.SaveData)("oauth.session");
+        session.handleAccessTokenResponse(data.tokenData, data.timestamp, true);
+
+        enforce!OAuthException(session.signature == data.signature,
+            "Failed to load session: signature mismatch.");
+
+        return session;
+    }
+
+
+
 }
 
 

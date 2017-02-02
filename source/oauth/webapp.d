@@ -14,6 +14,9 @@ import vibe.http.server : HTTPServerRequest, HTTPServerResponse;
 import std.datetime : Clock, SysTime;
 import std.typecons : Rebindable;
 
+version = DebugOAuth;
+version(DebugOAuth) import std.experimental.logger;
+
 /++
     Convenience oauth API wrapper for web applications
   +/
@@ -43,8 +46,7 @@ class OAuthWebapp
     bool isLoggedIn(
         scope HTTPServerRequest req)
     {
-        import std.stdio;
-        writeln("isLoggedIn()");
+        version(DebugOAuth) log("isLoggedIn()");
         // For assert in oauthSession method
         version(assert) req.params["oauth.debug.login.checked"] = "yes";
 
@@ -62,17 +64,14 @@ class OAuthWebapp
                 _sessionCache.remove(req.session.id);
         }
 
+        // TODO: it could be faster to use the result of .get directly
         if (req.session.isKeySet("oauth.client"))
         {
             string hash = req.session.get!string("oauth.client");
-            writeln("hash", hash);
-            writeln("settingsMap", _settingsMap);
-            writeln("settings", hash in _settingsMap);
             if (auto settings = hash in _settingsMap)
             if (auto session =
                 settings ? settings.loadSession(req.session) : null)
             {
-                writeln("settings", settings);
                 static if (__traits(compiles, req.context))
                     req.context["oauth.session"] = session;
 
@@ -118,8 +117,7 @@ class OAuthWebapp
         in string[string] extraParams = null,
         in string[] scopes = null)
     {
-        import std.stdio;
-        writeln("login()");
+        version(DebugOAuth) log("login()");
 
         // redirect from the authentication server
         if (req.session && "code" in req.query && "state" in req.query)
@@ -148,7 +146,6 @@ class OAuthWebapp
             if (!req.session)
                 req.session = res.startSession();
 
-            writeln("redirecting to OAuth provider");
             res.redirect(settings.userAuthUri(req.session, extraParams, scopes));
             return false;
         }
@@ -173,6 +170,7 @@ class OAuthWebapp
     OAuthSession oauthSession(in HTTPServerRequest req) nothrow
     in
     {
+        // https://issues.dlang.org/show_bug.cgi?id=17136 - dictionary get is not nothrow
         try assert (req.params.get("oauth.debug.login.checked", "no") == "yes");
         catch assert(false);
     }
@@ -180,6 +178,7 @@ class OAuthWebapp
     {
         try
         {
+            version(OAuthDebug) log("oAuthSession");
             static if (__traits(compiles, req.context))
                 if (auto pCM = "oauth.session" in req.context)
                     return pCM.get!OAuthSession;
