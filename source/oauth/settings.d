@@ -37,6 +37,8 @@ immutable(OAuthSettings)[] loadConfig(string path)
     return cfg;
 }
 
+@safe:
+
 /++
     Settings for an OAuth 2.0 client application.
 
@@ -353,7 +355,7 @@ class OAuthSettings
         return session;
     }
 
-    OAuthSession loadSession(scope Session httpSession) immutable
+    OAuthSession loadSession(scope Session httpSession) immutable @safe
     {
         auto session = provider._sessionFactory(this);
         OAuthSession.loadSession(httpSession, session);
@@ -386,11 +388,13 @@ class OAuthSettings
 
     package void requestAuthorization(
         OAuthSession session,
-        string[string] params) immutable
+        string[string] params) immutable @safe
     in
     {
         assert(session !is null);
-        assert(session.settings == this || session.settings.hash == this.hash);
+        () @trusted {
+            assert(session.settings == this || session.settings.hash == this.hash);
+        }();
     }
     out
     {

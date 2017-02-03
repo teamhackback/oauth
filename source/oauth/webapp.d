@@ -44,7 +44,7 @@ class OAuthWebapp
         Returns: $(D true) if this request is from a logged in user.
       +/
     bool isLoggedIn(
-        scope HTTPServerRequest req)
+        scope HTTPServerRequest req) @safe
     {
         version(DebugOAuth) log("isLoggedIn()");
         // For assert in oauthSession method
@@ -115,7 +115,7 @@ class OAuthWebapp
         scope HTTPServerResponse res,
         immutable OAuthSettings settings,
         in string[string] extraParams = null,
-        in string[] scopes = null)
+        in string[] scopes = null) @safe
     {
         version(DebugOAuth) log("login()");
 
@@ -167,12 +167,12 @@ class OAuthWebapp
             session was found.
       +/
     final
-    OAuthSession oauthSession(in HTTPServerRequest req) nothrow
+    OAuthSession oauthSession(in HTTPServerRequest req) nothrow @safe
     in
     {
         // https://issues.dlang.org/show_bug.cgi?id=17136 - dictionary get is not nothrow
         try assert (req.params.get("oauth.debug.login.checked", "no") == "yes");
-        catch assert(false);
+        catch(Exception) assert(false);
     }
     body
     {

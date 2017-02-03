@@ -111,7 +111,7 @@ class OAuthProvider
     }
 
     alias OAuthSession function(
-        immutable OAuthSettings) nothrow SessionFactory; ///
+        immutable OAuthSettings) nothrow @safe SessionFactory; ///
 
     // TODO: add get/set
     string authUri;     /// URI to which the user should be redirected
@@ -130,7 +130,7 @@ class OAuthProvider
         string authUri,
         string tokenUri,
         SessionFactory sessionFactory
-            = (settings) => new OAuthSession(settings)) immutable
+            = (settings) => new OAuthSession(settings)) immutable @safe
     {
         this.authUri = authUri;
         this.tokenUri = tokenUri;
@@ -143,7 +143,7 @@ class OAuthProvider
     /++
     Customize the redirect to the OAuth Server.
     +/
-    void authUriHandler(immutable OAuthSettings settings, string[string] params) const {
+    void authUriHandler(immutable OAuthSettings settings, string[string] params) const @safe {
         params["redirect_uri"] = settings.redirectUri;
     }
 
@@ -168,7 +168,7 @@ class OAuthProvider
 
     package(oauth):
 
-    this(in Json json) immutable
+    this(in Json json) immutable @trusted
     {
         this(json["authUri"].get!string,
             json["tokenUri"].get!string);

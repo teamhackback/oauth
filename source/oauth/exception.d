@@ -8,6 +8,8 @@ module oauth.exception;
 
 import vibe.data.json : Json;
 
+@safe:
+
 class OAuthException : Exception
 {
     /++

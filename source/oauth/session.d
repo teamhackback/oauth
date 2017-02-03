@@ -17,6 +17,8 @@ import vibe.http.session : Session;
 
 version(DebugOAuth) import std.experimental.logger;
 
+@safe:
+
 /++
     Holds an access token and optionally a refresh token.
   +/
@@ -151,7 +153,7 @@ class OAuthSession
     {
         // TODO: Use splitter that is nothrow
         try return split(this.scopeString, ' ');
-        catch assert(false); // should never actually throw
+        catch(Exception) assert(false); // should never actually throw
     }
 
     /++
@@ -288,9 +290,10 @@ class OAuthSession
     {
         import std.digest.sha : sha256Of, toHexString;
 
-        auto base =
-            settings.hash ~ cast(ubyte[])((&_timestamp)[0 .. 1]) ~
-            cast(ubyte[]) (this.classinfo.name ~ ": " ~ _tokenData.toString());
+        auto base = () @trusted {
+            return settings.hash ~ cast(ubyte[])((&_timestamp)[0 .. 1]) ~
+                   cast(ubyte[]) (this.classinfo.name ~ ": " ~ _tokenData.toString());
+        }();
 
         // TODO: for some reason the allocated string is GC collected and points
         // to garbage (hence the need for .dup)
@@ -321,7 +324,7 @@ class OAuthSession
             SaveData(_timestamp, _tokenData, this.signature));
     }
 
-    package static OAuthSession loadSession(scope Session httpSession, OAuthSession session)
+    package static OAuthSession loadSession(scope Session httpSession, OAuthSession session) @safe
     {
         if (!httpSession.isKeySet("oauth.session"))
             return null;
