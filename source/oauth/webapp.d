@@ -14,7 +14,7 @@ import vibe.http.server : HTTPServerRequest, HTTPServerResponse;
 import std.datetime : Clock, SysTime;
 import std.typecons : Rebindable;
 
-version = DebugOAuth;
+//version = DebugOAuth;
 version(DebugOAuth) import std.experimental.logger;
 
 /++
@@ -24,7 +24,7 @@ class OAuthWebapp
 {
     private
     {
-        Rebindable!(immutable OAuthSettings)[string] _settingsMap;
+        //Rebindable!(immutable OAuthSettings)[string] _settingsMap;
 
         struct SessionCacheEntry
         {
@@ -53,6 +53,7 @@ class OAuthWebapp
         if (!req.session)
             return false;
 
+        // TODO: is this caching really a good idea?
         if (auto pCE = req.session.id in _sessionCache)
         {
             if (pCE.session.verify(req.session))
@@ -65,22 +66,29 @@ class OAuthWebapp
         }
 
         // TODO: it could be faster to use the result of .get directly
-        if (req.session.isKeySet("oauth.client"))
+        if (req.session.isKeySet("user"))
         {
-            string hash = req.session.get!string("oauth.client");
-            if (auto settings = hash in _settingsMap)
-            if (auto session =
-                settings ? settings.loadSession(req.session) : null)
-            {
-                static if (__traits(compiles, req.context))
-                    req.context["oauth.session"] = session;
-
-                _sessionCache[req.session.id] =
-                    SessionCacheEntry(session, Clock.currTime);
-
-                return true;
-            }
+            return true;
         }
+
+        //if (req.session.isKeySet("oauth.client"))
+        //{
+            //string hash = req.session.get!string("oauth.client");
+            //log("hash", hash);
+            //log("_settingsMap", _settingsMap);
+            ////if (auto settings = hash in _settingsMap)
+            //if (auto session =
+                //settings ? settings.loadSession(req.session) : null)
+            //{
+                //static if (__traits(compiles, req.context))
+                    //req.context["oauth.session"] = session;
+
+                //_sessionCache[req.session.id] =
+                    //SessionCacheEntry(session, Clock.currTime);
+
+                //return true;
+            //}
+        //}
 
         return false;
     }
@@ -122,11 +130,11 @@ class OAuthWebapp
         // redirect from the authentication server
         if (req.session && "code" in req.query && "state" in req.query)
         {
-            import std.digest.digest : toHexString;
-            auto hashString = settings.hash.toHexString();
+            //import std.digest.digest : toHexString;
+            //auto hashString = settings.hash.toHexString();
 
-            if (hashString !in _settingsMap)
-                _settingsMap[hashString] = settings;
+            //if (hashString !in _settingsMap)
+                //_settingsMap[hashString] = settings;
 
             auto session = settings.userSession(
                 req.session, req.query["state"], req.query["code"]);
