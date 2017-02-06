@@ -26,13 +26,13 @@ class OAuthWebapp
     {
         //Rebindable!(immutable OAuthSettings)[string] _settingsMap;
 
-        struct SessionCacheEntry
-        {
-            OAuthSession session;
-            SysTime timestamp;
-        }
+        //struct SessionCacheEntry
+        //{
+            //OAuthSession session;
+            //SysTime timestamp;
+        //}
 
-        SessionCacheEntry[string] _sessionCache;
+        //SessionCacheEntry[string] _sessionCache;
     }
 
     /++
@@ -54,23 +54,21 @@ class OAuthWebapp
             return false;
 
         // TODO: is this caching really a good idea?
-        if (auto pCE = req.session.id in _sessionCache)
-        {
-            if (pCE.session.verify(req.session))
-            {
-                pCE.timestamp = Clock.currTime;
-                return true;
-            }
-            else
-                _sessionCache.remove(req.session.id);
-        }
+        //if (auto pCE = req.session.id in _sessionCache)
+        //{
+            //if (pCE.session.verify(req.session))
+            //{
+                //pCE.timestamp = Clock.currTime;
+                //return true;
+            //}
+            //else
+                //_sessionCache.remove(req.session.id);
+        //}
+
+        if (req.session.isKeySet("user"))
+            return true;
 
         // TODO: it could be faster to use the result of .get directly
-        if (req.session.isKeySet("user"))
-        {
-            return true;
-        }
-
         //if (req.session.isKeySet("oauth.client"))
         //{
             //string hash = req.session.get!string("oauth.client");
@@ -141,9 +139,6 @@ class OAuthWebapp
 
             if (session)
             {
-                _sessionCache[req.session.id] =
-                    SessionCacheEntry(session, Clock.currTime);
-
                 // For assert in oauthSession method
                 version(assert) req.params["oauth.debug.login.checked"] = "yes";
             }
@@ -175,7 +170,7 @@ class OAuthWebapp
             session was found.
       +/
     final
-    OAuthSession oauthSession(in HTTPServerRequest req) nothrow @safe
+    OAuthSession oauthSession(scope HTTPServerRequest req, immutable OAuthSettings settings) @safe
     in
     {
         // https://issues.dlang.org/show_bug.cgi?id=17136 - dictionary get is not nothrow
@@ -184,18 +179,7 @@ class OAuthWebapp
     }
     body
     {
-        try
-        {
-            version(OAuthDebug) log("oAuthSession");
-            static if (__traits(compiles, req.context))
-                if (auto pCM = "oauth.session" in req.context)
-                    return pCM.get!OAuthSession;
-
-            if (auto pCE = req.session.id in _sessionCache)
-                return pCE.session;
-        }
-        catch (Exception) { }
-
-        return null;
+        version(OAuthDebug) log("oAuthSession");
+        return settings.loadSession(req.session);
     }
 }

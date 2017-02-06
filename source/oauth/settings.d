@@ -54,7 +54,7 @@ class OAuthSettings
     string clientSecret;    ///
     string redirectUri;     ///
 
-    package ubyte[] hash;
+    immutable ubyte[] hash;
 
     /++
         Construct OAuthSettings from JSON object.
@@ -130,7 +130,7 @@ class OAuthSettings
 
         import std.digest.sha : sha256Of;
         assert(this.provider !is null, "Invalid provider selected");
-        this.hash = sha256Of(provider.tokenUri ~ ' ' ~ clientId);
+        this.hash = sha256Of(provider.tokenUri ~ ' ' ~ clientId).dup;
     }
 
     /++
@@ -355,6 +355,9 @@ class OAuthSettings
 
     OAuthSession loadSession(scope Session httpSession) immutable @safe
     {
+        //auto self = () @trusted {
+            //return cast(immutable OAuthSettings) this;
+        //}();
         auto session = provider._sessionFactory(this);
         OAuthSession.loadSession(httpSession, session);
         return session;
