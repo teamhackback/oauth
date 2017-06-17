@@ -51,8 +51,10 @@ class OAuthSession
         auto data = httpSession.get!(SaveData)("oauth.session");
         auto session = new OAuthSession(settings, data);
 
-        enforce!OAuthException(session.signature == data.signature,
-            "Failed to load session: signature mismatch.");
+        if (session.signature != data.signature)
+            return null;
+        //enforce!OAuthException(session.signature == data.signature,
+            //"Failed to load session: signature mismatch.");
 
         logDebugV("OAuth: Token provided by %s was successfully recovered" ~
             " from HTTP session.", settings.provider.authUriParsed.host);
